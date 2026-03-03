@@ -1,53 +1,25 @@
 # Vibe Apps
 
-A monorepo for quick, vibe-coded applications. Build fast, ship faster.
+A monorepo for quick, vibe-coded applications. Build fast, ship faster with spec driven development.
 
-## What's Inside
+## Packages
 
-Quick utility apps built for real-world needs:
-
-### Multi-Store Search
+### [Multi-Store Search](./packages/multi-store-search/README.md)
 Electron app that compares prices across Amazon, Blinkit, and Zepto in one window. Search once, see all results side-by-side with persistent sessions.
 
-**Location:** `packages/multi-store-search`
+- **Location:** `packages/multi-store-search`
+- **Documentation:** [README](./packages/multi-store-search/README.md)
 
-## Prerequisites
+### [FocusList for X](./packages/x-noise-blocker/focus-list-x/README.md)
+A Chrome extension that intercepts navigation to the algorithmic feed on X (formerly Twitter) and redirects you to a hardcoded Focus List. It also hides highly distracting UI elements and automatically opens Google Gemini in an adjacent tab for quick research capabilities.
 
-Before you start, make sure you have:
-
-- **Git** - [Download here](https://git-scm.com/downloads)
-- **Node.js** (v16 or higher) - [Download here](https://nodejs.org/)
-- **npm** (comes with Node.js)
+- **Location:** `packages/x-noise-blocker/focus-list-x`
+- **Documentation:** [README](./packages/x-noise-blocker/focus-list-x/README.md)
 
 ## Getting Started
 
-1. Clone the repository:
-```bash
-git clone https://github.com/[your-username]/vibe-apps-monorepo.git
-cd vibe-apps-monorepo
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-3. Run an app:
-```bash
-# Multi-Store Search
-npm run price-compare
-```
-
-## Running Individual Apps
-
-Each app can also be run independently:
-
-```bash
-cd packages/multi-store-search
-npm install
-npm start
-```
+Each application can be run or installed independently. Please refer to each package's `README.md` for specific prerequisites, installation steps, and usage guides.
 
 ## Adding New Apps
 
-Create a new package under `packages/` and add a script in the root `package.json`.
+Create a new package under `packages/` and update this root `README.md` with a link to your new project's documentation.
