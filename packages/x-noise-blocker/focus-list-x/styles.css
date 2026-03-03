@@ -1,0 +1,14 @@
+/* Hide various distracting UI elements on X */
+[aria-label="Home"],
+[aria-label="Explore"],
+[aria-label="Grok"],
+[aria-label="Premium"],
+[aria-label="Trending"],
+[aria-label="Who to follow"] {
+    display: none !important;
+}
+
+/* Specific elements often linked to sidebars */
+div[data-testid="sidebarColumn"] {
+    display: none !important;
+}
