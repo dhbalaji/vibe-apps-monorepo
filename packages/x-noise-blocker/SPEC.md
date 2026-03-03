@@ -32,19 +32,24 @@ focus-list-x/
 
 #### **A. Redirection Logic (`background.js`)**
 
-The extension will monitor the browser's navigation. If the URL matches `x.com` but *is not* the specific list URL, it will trigger a redirect.
+The extension will monitor the browser's navigation. If the URL matches `x.com` but *is not* the specific list URL, it will trigger a redirect. To facilitate research and quick glances, it will also automatically open Google Gemini in an adjacent tab, allowing the user to easily snap them side-by-side using Chrome's Split View.
 
 * **Target URL:** `https://x.com/i/lists/2022594617166979299`
+* **Secondary Action:** Open `https://gemini.google.com/app` in a new adjacent tab without switching focus.
 * **Logic:** ```javascript
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-const targetList = "https://x.com/i/lists/2022594617166979299";
-if (changeInfo.url && changeInfo.url.includes("x.com") && !changeInfo.url.includes(targetList)) {
-chrome.tabs.update(tabId, { url: targetList });
-}
+  const targetList = "https://x.com/i/lists/2022594617166979299";
+
+  if (changeInfo.url) {
+    if (changeInfo.url.includes(targetList) || (!changeInfo.url.includes("x.com") && !changeInfo.url.includes("twitter.com"))) {
+      return;
+    }
+
+    chrome.tabs.update(tabId, { url: targetList }, () => {
+      chrome.tabs.create({ url: "https://gemini.google.com/app", index: tab.index + 1, active: false });
+    });
+  }
 });
-```
-
-
 ```
 
 

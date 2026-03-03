@@ -8,6 +8,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 
     // Only redirect if trying to access feed or other parts of x.com/twitter.com
-    chrome.tabs.update(tabId, { url: targetList });
+    chrome.tabs.update(tabId, { url: targetList }, () => {
+      chrome.tabs.create({ url: "https://gemini.google.com/app", index: tab.index + 1, active: false });
+    });
   }
 });
