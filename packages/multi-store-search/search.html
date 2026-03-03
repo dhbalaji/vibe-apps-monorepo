@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Store Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            width: 100vw;
+        }
+        
+        .search-section {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 18px;
+            color: #333;
+            margin-right: 20px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 10px 25px;
+            font-size: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+
+        .stores-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            background: #e0e0e0;
+            overflow: hidden;
+            width: 100%;
+            max-width: 100vw;
+        }
+
+        .store-panel {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-right: 1px solid #ccc;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .store-panel:last-child {
+            border-right: none;
+        }
+
+        .store-header {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .store-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .open-external {
+            padding: 5px 12px;
+            font-size: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .open-external:hover {
+            background: #218838;
+        }
+
+        webview {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+        }
+
+        .placeholder {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .loading {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .qr-container {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            z-index: 100;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .qr-container:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .qr-container.show {
+            display: flex;
+        }
+
+        .qr-container.expanded {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            cursor: default;
+        }
+
+        .qr-container canvas {
+            border-radius: 4px;
+        }
+
+        .qr-container.expanded canvas {
+            width: 300px !important;
+            height: 300px !important;
+        }
+
+        .qr-label {
+            font-size: 8px;
+            color: #666;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .qr-container.expanded .qr-label {
+            font-size: 14px;
+        }
+
+        .qr-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        .qr-overlay.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-section">
+        <div class="search-bar">
+            <h1>🛒 Multi-Store Search</h1>
+            <input type="text" id="searchInput" placeholder="Search for products..." autofocus />
+            <button id="searchBtn">Search All</button>
+        </div>
+    </div>
+
+    <div class="stores-container">
+        <div class="store-panel">
+            <div class="store-header">
+                <h2>Amazon</h2>
+                <button class="open-external" data-store="amazon">Open in Browser</button>
+            </div>
+            <div class="loading" id="amazonLoading">Loading Amazon...</div>
+            <webview id="amazonView" style="display: none;" partition="persist:amazon"></webview>
+            <div class="qr-container" id="qrAmazon">
+                <canvas id="qrCanvasAmazon"></canvas>
+                <div class="qr-label">Open Amazon app</div>
+            </div>
+        </div>
+
+        <div class="store-panel">
+            <div class="store-header">
+                <h2>Blinkit</h2>
+                <button class="open-external" data-store="blinkit">Open in Browser</button>
+            </div>
+            <div class="loading" id="blinkitLoading">Loading Blinkit...</div>
+            <webview id="blinkitView" style="display: none;" partition="persist:blinkit"></webview>
+            <div class="qr-container" id="qrBlinkit">
+                <canvas id="qrCanvasBlinkit"></canvas>
+                <div class="qr-label">Open Blinkit app</div>
+            </div>
+        </div>
+
+        <div class="store-panel">
+            <div class="store-header">
+                <h2>Zepto</h2>
+                <button class="open-external" data-store="zepto">Open in Browser</button>
+            </div>
+            <div class="loading" id="zeptoLoading">Loading Zepto...</div>
+            <webview id="zeptoView" style="display: none;" partition="persist:zepto"></webview>
+            <div class="qr-container" id="qrZepto">
+                <canvas id="qrCanvasZepto"></canvas>
+                <div class="qr-label">Open Zepto app</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="qr-overlay" id="qrOverlay"></div>
+
+    <script>
+        const { ipcRenderer, shell } = require('electron');
+        const QRCode = require('qrcode');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        const amazonView = document.getElementById('amazonView');
+        const blinkitView = document.getElementById('blinkitView');
+        const zeptoView = document.getElementById('zeptoView');
+
+        const amazonLoading = document.getElementById('amazonLoading');
+        const blinkitLoading = document.getElementById('blinkitLoading');
+        const zeptoLoading = document.getElementById('zeptoLoading');
+
+        let currentQuery = '';
+
+        const storeUrls = {
+            amazon: (query) => `https://www.amazon.in/s?k=${encodeURIComponent(query)}`,
+            blinkit: (query) => `https://blinkit.com/search?q=${encodeURIComponent(query)}&collection=search`,
+            zepto: (query) => `https://www.zepto.com/search?query=${encodeURIComponent(query)}`
+        };
+
+        // Set user agent to avoid mobile redirects
+        const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+        
+        amazonView.setAttribute('useragent', userAgent);
+        blinkitView.setAttribute('useragent', userAgent);
+        zeptoView.setAttribute('useragent', userAgent);
+
+        // Handle webview loading
+        function setupWebview(webview, loading) {
+            webview.addEventListener('did-start-loading', () => {
+                loading.style.display = 'flex';
+                webview.style.display = 'none';
+            });
+
+            webview.addEventListener('did-stop-loading', () => {
+                loading.style.display = 'none';
+                webview.style.display = 'flex';
+            });
+
+            // Inject scripts to handle location and suppress prompts
+            webview.addEventListener('dom-ready', () => {
+                webview.executeJavaScript(`
+                    // Set location to Hosur, TN
+                    if (window.location.hostname.includes('blinkit')) {
+                        localStorage.setItem('lat', '12.7409');
+                        localStorage.setItem('lon', '77.8253');
+                        localStorage.setItem('userLocation', JSON.stringify({
+                            city: 'Hosur',
+                            state: 'Tamil Nadu',
+                            lat: 12.7409,
+                            lng: 77.8253
+                        }));
+                    }
+                    
+                    if (window.location.hostname.includes('zepto')) {
+                        localStorage.setItem('userLocation', JSON.stringify({
+                            city: 'Hosur',
+                            state: 'Tamil Nadu',
+                            latitude: 12.7409,
+                            longitude: 77.8253
+                        }));
+                    }
+
+                    if (window.location.hostname.includes('amazon')) {
+                        localStorage.setItem('deliveryLocation', JSON.stringify({
+                            city: 'Hosur',
+                            state: 'Tamil Nadu',
+                            pincode: '635109'
+                        }));
+                    }
+
+                    // Suppress common prompts
+                    const originalAlert = window.alert;
+                    const originalConfirm = window.confirm;
+                    
+                    window.alert = function(msg) {
+                        if (msg && msg.toLowerCase().includes('location')) return;
+                        if (msg && msg.toLowerCase().includes('continue')) return;
+                        return originalAlert.apply(this, arguments);
+                    };
+                    
+                    window.confirm = function(msg) {
+                        if (msg && msg.toLowerCase().includes('location')) return true;
+                        if (msg && msg.toLowerCase().includes('continue')) return true;
+                        return originalConfirm.apply(this, arguments);
+                    };
+                `);
+            });
+        }
+
+        setupWebview(amazonView, amazonLoading);
+        setupWebview(blinkitView, blinkitLoading);
+        setupWebview(zeptoView, zeptoLoading);
+
+        // QR Code functionality for each store
+        const qrConfigs = [
+            { view: amazonView, canvas: document.getElementById('qrCanvasAmazon'), container: document.getElementById('qrAmazon') },
+            { view: blinkitView, canvas: document.getElementById('qrCanvasBlinkit'), container: document.getElementById('qrBlinkit') },
+            { view: zeptoView, canvas: document.getElementById('qrCanvasZepto'), container: document.getElementById('qrZepto') }
+        ];
+
+        const qrOverlay = document.getElementById('qrOverlay');
+
+        function updateQRCode(webview, canvas, container) {
+            const url = webview.getURL();
+            if (url && url !== 'about:blank' && !url.includes('file://')) {
+                const isExpanded = container.classList.contains('expanded');
+                const size = isExpanded ? 300 : 60;
+                
+                QRCode.toCanvas(canvas, url, {
+                    width: size,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                }, (error) => {
+                    if (!error) {
+                        container.classList.add('show');
+                    }
+                });
+            }
+        }
+
+        // Setup QR code updates for each webview
+        qrConfigs.forEach(({ view, canvas, container }) => {
+            let updateTimeout;
+            
+            const scheduleUpdate = () => {
+                clearTimeout(updateTimeout);
+                updateTimeout = setTimeout(() => {
+                    updateQRCode(view, canvas, container);
+                }, 1000);
+            };
+
+            view.addEventListener('did-navigate', scheduleUpdate);
+            view.addEventListener('did-navigate-in-page', scheduleUpdate);
+            view.addEventListener('did-stop-loading', scheduleUpdate);
+        });
+
+        // Toggle QR code size on click
+        document.querySelectorAll('.qr-container').forEach(container => {
+            container.addEventListener('click', (e) => {
+                const isExpanded = container.classList.contains('expanded');
+                
+                if (!isExpanded) {
+                    // Expand
+                    container.classList.add('expanded');
+                    qrOverlay.classList.add('show');
+                    
+                    // Hide all other QR codes
+                    document.querySelectorAll('.qr-container').forEach(qr => {
+                        if (qr !== container) {
+                            qr.style.display = 'none';
+                        }
+                    });
+                    
+                    // Regenerate QR code with larger size
+                    const config = qrConfigs.find(c => c.container === container);
+                    if (config) {
+                        updateQRCode(config.view, config.canvas, config.container);
+                    }
+                }
+            });
+        });
+
+        // Click overlay to close expanded QR
+        qrOverlay.addEventListener('click', () => {
+            document.querySelectorAll('.qr-container.expanded').forEach(container => {
+                container.classList.remove('expanded');
+                
+                // Regenerate with small size
+                const config = qrConfigs.find(c => c.container === container);
+                if (config) {
+                    updateQRCode(config.view, config.canvas, config.container);
+                }
+            });
+            
+            // Show all QR codes again
+            document.querySelectorAll('.qr-container').forEach(qr => {
+                qr.style.display = 'flex';
+            });
+            
+            qrOverlay.classList.remove('show');
+        });
+
+        // Load sites on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            amazonView.src = 'https://www.amazon.in';
+            blinkitView.src = 'https://blinkit.com';
+            zeptoView.src = 'https://www.zepto.com';
+        });
+
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                alert('Please enter a search term');
+                return;
+            }
+
+            currentQuery = query;
+
+            // Load search URLs
+            amazonView.src = storeUrls.amazon(query);
+            zeptoView.src = storeUrls.zepto(query);
+            
+            // For Blinkit, load homepage first then inject search
+            blinkitView.src = 'https://blinkit.com';
+            
+            // Wait for Blinkit to load, then trigger search
+            const blinkitLoadHandler = () => {
+                setTimeout(() => {
+                    blinkitView.executeJavaScript(`
+                        // Try to find and fill search input
+                        const searchInput = document.querySelector('input[type="search"]') || 
+                                          document.querySelector('input[placeholder*="Search"]') ||
+                                          document.querySelector('input[name="q"]') ||
+                                          document.querySelector('.search-input') ||
+                                          document.querySelector('[data-testid="search-input"]');
+                        
+                        if (searchInput) {
+                            searchInput.value = '${query.replace(/'/g, "\\'")}';
+                            searchInput.focus();
+                            
+                            // Trigger input event
+                            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            
+                            // Try to find and click search button
+                            setTimeout(() => {
+                                const searchBtn = document.querySelector('button[type="submit"]') ||
+                                                document.querySelector('.search-button') ||
+                                                document.querySelector('[data-testid="search-button"]');
+                                if (searchBtn) {
+                                    searchBtn.click();
+                                } else {
+                                    // Trigger Enter key
+                                    searchInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+                                    searchInput.dispatchEvent(new KeyboardEvent('keypress', { key: 'Enter', keyCode: 13, bubbles: true }));
+                                    searchInput.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', keyCode: 13, bubbles: true }));
+                                }
+                            }, 500);
+                        }
+                    `);
+                }, 2000);
+                blinkitView.removeEventListener('did-stop-loading', blinkitLoadHandler);
+            };
+            
+            blinkitView.addEventListener('did-stop-loading', blinkitLoadHandler);
+        }
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        // Open in external browser - get current URL from webview
+        document.querySelectorAll('.open-external').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const store = e.target.dataset.store;
+                const webviewMap = {
+                    amazon: amazonView,
+                    blinkit: blinkitView,
+                    zepto: zeptoView
+                };
+                
+                const webview = webviewMap[store];
+                const currentUrl = webview.getURL();
+                
+                if (currentUrl && currentUrl !== 'about:blank') {
+                    shell.openExternal(currentUrl);
+                } else {
+                    // Fallback to homepage if webview hasn't loaded yet
+                    const homepages = {
+                        amazon: 'https://www.amazon.in',
+                        blinkit: 'https://blinkit.com',
+                        zepto: 'https://www.zepto.com'
+                    };
+                    shell.openExternal(homepages[store]);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
